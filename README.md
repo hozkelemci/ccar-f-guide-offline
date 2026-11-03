@@ -8,7 +8,7 @@
 
 ## GitHub Pages
 
-GitHub Pages, `main` dalının `/ (root)` klasöründen yayımlanacak şekilde ayarlandı. `https://hozkelemci.github.io/ccar-f-guide-offline/` adresini iPad Safari'de açıp **Paylaş → Ana Ekrana Ekle** yolunu izleyin. İlk ziyarette çevrimiçi kalıp uygulamanın kurulumunu tamamlamasına izin verin.
+GitHub Pages, `main` dalının `/ (root)` klasöründen yayımlanacak şekilde ayarlandı. `https://hozkelemci.github.io/ccar-f-guide-offline/` adresini iPad Safari'de açıp **Paylaş → Ana Ekrana Ekle** yolunu izleyin. Dersleri indirmeden önce ana ekrandaki uygulamayı açın; Safari ile ana ekran uygulamasının kayıt alanları ayrı olabilir.
 
 ## Yerel deneme
 
