@@ -8,7 +8,7 @@
 
 ## GitHub Pages
 
-Depo ayarlarında **Settings → Pages → Build and deployment → Deploy from a branch** seçin; `main` dalını ve `/ (root)` klasörünü işaretleyin. Sonra `https://hozkelemci.github.io/ccar-f-guide-offline/` adresini iPad Safari'de açıp **Paylaş → Ana Ekrana Ekle** yolunu izleyin. İlk ziyarette çevrimiçi kalıp uygulamanın kurulumunu tamamlamasına izin verin.
+GitHub Pages, `main` dalının `/ (root)` klasöründen yayımlanacak şekilde ayarlandı. `https://hozkelemci.github.io/ccar-f-guide-offline/` adresini iPad Safari'de açıp **Paylaş → Ana Ekrana Ekle** yolunu izleyin. İlk ziyarette çevrimiçi kalıp uygulamanın kurulumunu tamamlamasına izin verin.
 
 ## Yerel deneme
 
