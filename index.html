@@ -28,7 +28,14 @@
 
     <section class="notice" aria-label="Çevrimdışı kullanım">
       <span class="status-dot" id="status-dot"></span>
-      <div><strong id="network-status">Bağlantı kontrol ediliyor</strong><p>Bu plan ve işaretlediğiniz ilerleme çevrimdışı açılır. Ders metinleri kaynak sitededir ve okumak için internet gerekir.</p></div>
+      <div><strong id="network-status">Bağlantı kontrol ediliyor</strong><p>Bu plan ve işaretlediğiniz ilerleme çevrimdışı açılır. Ders metinleri, izinle bu cihaza indirildikten sonra çevrimdışı okunabilir.</p></div>
+    </section>
+
+    <section class="download-card" aria-labelledby="download-title">
+      <h2 id="download-title">Dersleri bu cihaza indir</h2>
+      <p>İndirme yalnızca sizin iPad'inize yapılır; ders metinleri GitHub deposuna yüklenmez. Kaynak sitenin <a href="https://claudecertificationguide.com/terms" target="_blank" rel="noopener noreferrer">kullanım koşullarını</a> ve aldığınız iznin kapsamını kontrol edin.</p>
+      <label class="permission"><input id="permission-confirmed" type="checkbox"> Hak sahibinden 30 ücretsiz dersi kişisel çevrimdışı kullanmak için izin aldım.</label>
+      <div class="download-actions"><button id="download-lessons" type="button" disabled>30 dersi indir / güncelle</button><span id="download-status" role="status" aria-live="polite">Bu cihazda 0 / 30 ders var.</span></div>
     </section>
 
     <div class="toolbar">
@@ -44,6 +51,10 @@
     </section>
     <footer>Bağımsız çalışma planı. Dersler <a href="https://claudecertificationguide.com/learn" target="_blank" rel="noopener noreferrer">AI Cert Guides</a> tarafından yayımlanır. Bu uygulama ders metinlerini barındırmaz.</footer>
   </main>
+  <dialog id="reader" aria-labelledby="reader-title">
+    <div class="reader-top"><h2 id="reader-title"></h2><button id="close-reader" type="button" aria-label="Okuyucuyu kapat">Kapat</button></div>
+    <div id="reader-body" class="reader-body"></div>
+  </dialog>
   <script src="./app.js" defer></script>
 </body>
 </html>

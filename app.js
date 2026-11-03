@@ -57,6 +57,15 @@ const progressPercent = document.getElementById('progress-percent');
 const networkStatus = document.getElementById('network-status');
 const statusDot = document.getElementById('status-dot');
 const updateStatus = document.getElementById('update-status');
+const downloadButton = document.getElementById('download-lessons');
+const downloadStatus = document.getElementById('download-status');
+const permissionConfirmed = document.getElementById('permission-confirmed');
+const reader = document.getElementById('reader');
+const readerTitle = document.getElementById('reader-title');
+const readerBody = document.getElementById('reader-body');
+const offlineButtons = new Map();
+let savedCount = 0;
+let isDownloading = false;
 
 function updateProgress() {
   progress.max = total;
@@ -115,7 +124,24 @@ for (const domain of domains) {
     const external = document.createElement('span');
     external.className = 'external';
     external.textContent = 'Kaynak sitede aç ↗';
-    item.append(checkbox, link, external);
+    const offlineButton = document.createElement('button');
+    offlineButton.className = 'offline-read';
+    offlineButton.type = 'button';
+    offlineButton.textContent = 'Çevrimdışı oku';
+    offlineButton.hidden = true;
+    offlineButton.addEventListener('click', async () => {
+      try {
+        const lesson = await getSavedLesson(number);
+        if (!lesson) return;
+        readerTitle.textContent = `${number} ${title}`;
+        readerBody.innerHTML = lesson.html;
+        reader.showModal();
+      } catch {
+        downloadStatus.textContent = 'Kaydedilen ders açılamadı.';
+      }
+    });
+    offlineButtons.set(number, offlineButton);
+    item.append(checkbox, link, external, offlineButton);
     lessons.append(item);
   }
   section.append(lessons);
@@ -126,6 +152,136 @@ updateProgress();
 updateConnection();
 window.addEventListener('online', updateConnection);
 window.addEventListener('offline', updateConnection);
+document.getElementById('close-reader').addEventListener('click', () => reader.close());
+
+function openLessonDatabase() {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open('ccar-f-personal-lessons', 1);
+    request.onupgradeneeded = () => request.result.createObjectStore('lessons', {keyPath: 'number'});
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+const database = openLessonDatabase();
+
+function readStore(action) {
+  return database.then(db => new Promise((resolve, reject) => {
+    const transaction = db.transaction('lessons', action === 'put' ? 'readwrite' : 'readonly');
+    const store = transaction.objectStore('lessons');
+    const request = action === 'keys' ? store.getAllKeys() : store.get(action);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  }));
+}
+
+function getSavedLesson(number) {
+  return readStore(number);
+}
+
+function saveLesson(lesson) {
+  return database.then(db => new Promise((resolve, reject) => {
+    const transaction = db.transaction('lessons', 'readwrite');
+    transaction.objectStore('lessons').put(lesson);
+    transaction.oncomplete = resolve;
+    transaction.onerror = () => reject(transaction.error);
+  }));
+}
+
+async function refreshSavedLessons() {
+  const keys = await readStore('keys');
+  savedCount = keys.length;
+  for (const [number, button] of offlineButtons) button.hidden = !keys.includes(number);
+  downloadStatus.textContent = `Bu cihazda ${savedCount} / ${total} ders var.`;
+}
+
+const allowedTags = new Set(['P', 'H2', 'H3', 'H4', 'H5', 'H6', 'UL', 'OL', 'LI', 'PRE', 'CODE', 'BLOCKQUOTE', 'STRONG', 'EM', 'B', 'I', 'A', 'BR', 'TABLE', 'THEAD', 'TBODY', 'TR', 'TH', 'TD', 'HR', 'DIV', 'SPAN', 'SECTION', 'FIGURE', 'FIGCAPTION']);
+const discardedTags = new Set(['SCRIPT', 'STYLE', 'SVG', 'BUTTON', 'INPUT', 'FORM', 'IFRAME', 'NOSCRIPT', 'TEMPLATE']);
+
+function safeCopy(source, targetDocument, baseUrl) {
+  if (source.nodeType === Node.TEXT_NODE) return targetDocument.createTextNode(source.nodeValue);
+  if (source.nodeType !== Node.ELEMENT_NODE || discardedTags.has(source.tagName)) return null;
+  if (source.tagName === 'IMG') {
+    const alt = source.getAttribute('alt');
+    if (!alt) return null;
+    const caption = targetDocument.createElement('p');
+    caption.textContent = `Görsel: ${alt}`;
+    return caption;
+  }
+  const copy = allowedTags.has(source.tagName) ? targetDocument.createElement(source.tagName.toLowerCase()) : targetDocument.createDocumentFragment();
+  if (source.tagName === 'A') {
+    try {
+      const url = new URL(source.getAttribute('href'), baseUrl);
+      if (url.protocol === 'https:') {
+        copy.href = url.href;
+        copy.target = '_blank';
+        copy.rel = 'noopener noreferrer';
+      }
+    } catch {}
+  }
+  for (const child of source.childNodes) {
+    const safeChild = safeCopy(child, targetDocument, baseUrl);
+    if (safeChild) copy.append(safeChild);
+  }
+  return copy;
+}
+
+function extractLesson(html, url) {
+  const source = new DOMParser().parseFromString(html, 'text/html');
+  const article = source.querySelector('article');
+  if (!article || article.textContent.trim().length < 300) throw new Error('Ders metni bulunamadı.');
+  const safeDocument = document.implementation.createHTMLDocument('');
+  const container = safeDocument.createElement('div');
+  for (const child of article.childNodes) {
+    const safeChild = safeCopy(child, safeDocument, url);
+    if (safeChild) container.append(safeChild);
+  }
+  return container.innerHTML;
+}
+
+permissionConfirmed.addEventListener('change', () => {
+  downloadButton.disabled = isDownloading || !permissionConfirmed.checked;
+});
+
+downloadButton.addEventListener('click', async () => {
+  if (!permissionConfirmed.checked || isDownloading) return;
+  isDownloading = true;
+  downloadButton.disabled = true;
+  let downloaded = 0;
+  try {
+    const refreshAll = savedCount === total;
+    for (const domain of domains) {
+      for (const [number, title, slug] of domain.lessons) {
+        if (!refreshAll && await getSavedLesson(number)) {
+          downloaded++;
+          continue;
+        }
+        const url = `https://claudecertificationguide.com/learn/${domain.path}/${slug}`;
+        downloadStatus.textContent = `İndiriliyor: ${downloaded + 1} / ${total} — ${number} ${title}`;
+        const response = await fetch(url, {mode: 'cors', credentials: 'omit', cache: 'no-store'});
+        if (!response.ok || !response.headers.get('content-type')?.includes('text/html')) throw new Error(`${number} indirilemedi.`);
+        const html = extractLesson(await response.text(), url);
+        await saveLesson({number, title, url, html, savedAt: Date.now()});
+        offlineButtons.get(number).hidden = false;
+        downloaded++;
+      }
+    }
+    await refreshSavedLessons();
+    downloadStatus.textContent = `${total} ders bu cihaza indirildi. Artık çevrimdışı okuyabilirsiniz.`;
+  } catch (error) {
+    await refreshSavedLessons();
+    downloadStatus.textContent = `İndirme durdu (${savedCount} / ${total} kayıtlı). ${error.message} Tekrar deneyebilirsiniz.`;
+  } finally {
+    isDownloading = false;
+    downloadButton.disabled = !permissionConfirmed.checked;
+  }
+});
+
+refreshSavedLessons().catch(() => {
+  permissionConfirmed.disabled = true;
+  downloadButton.disabled = true;
+  downloadStatus.textContent = 'Bu tarayıcı dersleri cihazda saklayamıyor.';
+});
 
 if ('serviceWorker' in navigator) {
   navigator.serviceWorker.register('./sw.js').then(registration => {
